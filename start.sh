@@ -2,5 +2,11 @@
 echo "✅ VPS Started"
 mkdir -p workdir
 cd workdir
-echo "🟢 You are now inside your GitHub VPS"
-tmux new -s VPS
+
+# OPTIONAL: Put your script logic here
+# Example: Run a web server, bot, etc
+# python3 bot.py &
+
+# 💤 Keep the GitHub runner alive for ~6 hours
+echo "🟢 Keeping VPS alive for 350 minutes..."
+sleep 21000
