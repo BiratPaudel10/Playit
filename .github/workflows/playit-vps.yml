@@ -1,34 +1,50 @@
-name: Free VPS with Playit
+name: Free VPS with Playit (Auto-Restart)
 
 on:
+  repository_dispatch:
+    types: [create-vps]
   workflow_dispatch:
 
 jobs:
   setup-vps:
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    timeout-minutes: 350  # 5 hours 50 mins
     steps:
-      - name: Start SSH and Install Requirements
+      - name: 🧰 Update & Install SSH
         run: |
           sudo apt update && sudo apt install -y openssh-server curl
           sudo service ssh start
 
-      - name: Create Biralo User with Password and Sudo Access
+      - name: 👤 Create 'Biralo' User with Password and Sudo
         run: |
           sudo adduser --disabled-password --gecos "" Biralo
           echo "Biralo:Biralo" | sudo chpasswd
           sudo usermod -aG sudo Biralo
 
-      - name: Install and Start Playit Tunnel
+      - name: 🚀 Install & Run Playit Tunnel
         run: |
           curl -fsSL https://playit.gg/install | bash
           ./playit &> playit.log &
           sleep 10
-          cat playit.log | grep -i "https://playit.gg/claim" || echo "No claim link found"
+          echo "🔗 Playit Claim Link:"
+          grep -i "https://playit.gg/claim" playit.log || echo "❌ No claim link found yet."
 
-      - name: Show VPS Access Help
+      - name: ℹ️ VPS Access Info
         run: |
+          echo "========================================="
           echo "✅ VPS is running!"
-          echo "🔑 Username: Biralo"
-          echo "🔒 Password: Biralo"
-          echo "➡️ After claim, go to your Playit panel to get SSH host/port."
+          echo "🔐 Username: Biralo"
+          echo "🔑 Password: Biralo"
+          echo "🛠️  Sudo Access: Yes"
+          echo "🌐 Claim your Playit tunnel from the link above"
+          echo "========================================="
+
+      - name: 🔁 Re-trigger This Workflow After 6 Hours
+        if: always()
+        run: |
+          echo "Triggering next restart..."
+          curl -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            https://api.github.com/repos/${{ github.repository }}/dispatches \
+            -d '{"event_type":"create-vps"}'
