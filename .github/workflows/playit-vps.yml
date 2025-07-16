@@ -8,7 +8,7 @@ on:
 jobs:
   setup-vps:
     runs-on: ubuntu-latest
-    timeout-minutes: 350  # 5 hours 50 mins
+    timeout-minutes: 350  # Runs for 5 hours 50 mins
     steps:
       - name: 🧰 Update & Install SSH
         run: |
@@ -17,7 +17,7 @@ jobs:
 
       - name: 👤 Create 'Biralo' User with Password and Sudo
         run: |
-          sudo adduser --disabled-password --gecos "" Biralo
+          sudo adduser --disabled-password --gecos "" --allow-bad-names Biralo
           echo "Biralo:Biralo" | sudo chpasswd
           sudo usermod -aG sudo Biralo
 
