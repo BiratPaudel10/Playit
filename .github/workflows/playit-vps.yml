@@ -1,0 +1,34 @@
+name: Free VPS with Playit
+
+on:
+  workflow_dispatch:
+
+jobs:
+  setup-vps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Start SSH and Install Requirements
+        run: |
+          sudo apt update && sudo apt install -y openssh-server curl
+          sudo service ssh start
+
+      - name: Create Biralo User with Password and Sudo Access
+        run: |
+          sudo adduser --disabled-password --gecos "" Biralo
+          echo "Biralo:Biralo" | sudo chpasswd
+          sudo usermod -aG sudo Biralo
+
+      - name: Install and Start Playit Tunnel
+        run: |
+          curl -fsSL https://playit.gg/install | bash
+          ./playit &> playit.log &
+          sleep 10
+          cat playit.log | grep -i "https://playit.gg/claim" || echo "No claim link found"
+
+      - name: Show VPS Access Help
+        run: |
+          echo "✅ VPS is running!"
+          echo "🔑 Username: Biralo"
+          echo "🔒 Password: Biralo"
+          echo "➡️ After claim, go to your Playit panel to get SSH host/port."
