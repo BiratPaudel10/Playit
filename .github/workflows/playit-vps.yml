@@ -1,50 +1,37 @@
-name: Free VPS with tmate (Auto-Restart)
+name: GitHub VPS 24/7
 
 on:
-  repository_dispatch:
-    types: [create-vps]
   workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * *'  # Every 6 hours auto-rotate
 
 jobs:
-  setup-vps:
+  vps:
     runs-on: ubuntu-latest
-    timeout-minutes: 350  # ~5h 50m max runtime
+    timeout-minutes: 350
 
     steps:
-      - name: 🧰 Update & Install SSH & tmate
-        run: |
-          sudo apt update && sudo apt install -y openssh-server curl tmate
-          sudo service ssh start
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: 👤 Create 'Biralo' User with Password and Sudo (allow uppercase)
+      - name: Install & Start Tmate
         run: |
-          sudo adduser --disabled-password --gecos "" --allow-bad-names Biralo
-          echo "Biralo:Biralo" | sudo chpasswd
-          sudo usermod -aG sudo Biralo
-
-      - name: 🚀 Start tmate SSH session and output connection string
-        run: |
+          sudo apt update && sudo apt install -y tmate
           tmate -S /tmp/tmate.sock new-session -d
-          sleep 5
-          echo "🔗 SSH connection string:"
+          tmate -S /tmp/tmate.sock wait tmate-ready
+          echo "🔗 SSH LINK:"
           tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}'
+          tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}' > sshlink.txt
 
-      - name: ℹ️ VPS Access Info
-        run: |
-          echo "========================================="
-          echo "✅ VPS is running!"
-          echo "🔐 Username: Biralo"
-          echo "🔑 Password: Biralo"
-          echo "🛠️  Sudo Access: Yes"
-          echo "🌐 Use the SSH connection string above to connect."
-          echo "========================================="
+      - name: Show SSH
+        run: cat sshlink.txt
 
-      - name: 🔁 Re-trigger This Workflow After 6 Hours
+      - name: Restore Data
+        run: bash restore.sh
+
+      - name: Start VPS Script
+        run: bash start.sh
+
+      - name: Backup Data
         if: always()
-        run: |
-          echo "Triggering next restart..."
-          curl -X POST \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer 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" \
-            https://api.github.com/repos/${{ github.repository }}/dispatches \
-            -d '{"event_type":"create-vps"}'
+        run: bash backup.sh
