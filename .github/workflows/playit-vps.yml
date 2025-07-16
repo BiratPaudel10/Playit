@@ -3,7 +3,7 @@ name: GitHub VPS 24/7
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 */6 * * *'  # Every 6 hours auto-rotate
+    - cron: '0 */6 * * *'  # Every 6 hours
 
 jobs:
   vps:
@@ -11,7 +11,7 @@ jobs:
     timeout-minutes: 350
 
     steps:
-      - name: Checkout
+      - name: Checkout Repo
         uses: actions/checkout@v4
 
       - name: Install & Start Tmate
@@ -19,12 +19,9 @@ jobs:
           sudo apt update && sudo apt install -y tmate
           tmate -S /tmp/tmate.sock new-session -d
           tmate -S /tmp/tmate.sock wait tmate-ready
-          echo "🔗 SSH LINK:"
-          tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}'
           tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}' > sshlink.txt
-
-      - name: Show SSH
-        run: cat sshlink.txt
+          echo "🔗 SSH Link:"
+          cat sshlink.txt
 
       - name: Restore Data
         run: bash restore.sh
