@@ -1,34 +1,49 @@
-name: GitHub VPS 24/7
+name: GitHub VPS AutoRestart
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: '0 */6 * * *'  # Every 6 hours
+    - cron: '*/10 * * * *'  # runs every 10 min, checks for flag
+  workflow_dispatch:
+  repository_dispatch:
+    types: [create-vps]
 
 jobs:
   vps:
+    if: github.repository == 'youruser/yourrepo'
     runs-on: ubuntu-latest
-    timeout-minutes: 350
-
+    timeout-minutes: 350  # ~6 hours
     steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
-      - name: Install & Start Tmate
+      - name: Install dependencies
         run: |
-          sudo apt update && sudo apt install -y tmate
-          tmate -S /tmp/tmate.sock new-session -d
-          tmate -S /tmp/tmate.sock wait tmate-ready
-          tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}' > sshlink.txt
-          echo "🔗 SSH Link:"
-          cat sshlink.txt
+          sudo apt update
+          sudo apt install -y tmate unzip
 
-      - name: Restore Data
-        run: bash restore.sh
+      - name: Restore backup
+        run: |
+          git clone --depth 1 --branch vps-backup https://github.com/${{ github.repository }} backup-repo
+          mkdir -p ~/vps_data
+          if [ -f backup-repo/backup.zip ]; then
+            unzip -o backup-repo/backup.zip -d ~/vps_data
+          fi
 
-      - name: Start VPS Script
-        run: bash start.sh
+      - name: Start VPS (Example: tmate)
+        run: |
+          tmate -F &  # or your server launch here
+          sleep 345m  # wait till 5h45min
 
-      - name: Backup Data
-        if: always()
-        run: bash backup.sh
+      - name: Save backup
+        run: |
+          mkdir -p ~/vps_data
+          # add your data to backup (example)
+          zip -r backup.zip ~/vps_data
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          git clone --depth 1 --branch vps-backup https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} backup-push
+          mv backup.zip backup-push/
+          cd backup-push
+          git add .
+          git commit -m "Auto backup at $(date)" || echo "No changes"
+          git push origin vps-backup
