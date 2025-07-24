@@ -14,25 +14,37 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Install dependencies
+      - name: Install dependencies (tmate, zip, playit)
         run: |
           sudo apt update
-          sudo apt install -y unzip zip tmate
+          sudo apt install -y unzip zip tmate curl
 
       - name: Restore backup
         run: |
           mkdir -p ~/vps_data
-          git clone --depth 1 --branch vps-backup https://github.com/${{ github.repository }} backup-repo || echo "No backup repo yet"
+          git clone --depth 1 --branch vps-backup https://github.com/${{ github.repository }} backup-repo || echo "No backup found"
           if [ -f backup-repo/backup.zip ]; then
-            unzip -o backup-repo/backup.zip -d ~/vps_data
+            unzip -o backup-repo/backup.zip -d ~/
           fi
 
-      - name: Start VPS (tmate)
+      - name: Install and run Playit
+        run: |
+          mkdir -p ~/vps_data/playit
+          cd ~/vps_data/playit
+          curl -o playit https://playit-cloud.github.io/cli/playit-linux-amd64
+          chmod +x playit
+          ./playit &
+
+      - name: Start tmate & prevent idle
         run: |
           tmate -F &
-          sleep 345m
+          while true; do
+            echo "✅ VPS is still alive at $(date)"
+            sleep 60
+          done
 
-      - name: Save backup
+      - name: Save backup (runs at the end only)
+        if: always()
         run: |
           cd ~
           zip -r backup.zip vps_data
@@ -42,5 +54,5 @@ jobs:
           mv backup.zip backup-push/
           cd backup-push
           git add backup.zip
-          git commit -m "Auto backup $(date)" || echo "No changes"
+          git commit -m "Auto backup at $(date)" || echo "No changes to backup"
           git push origin vps-backup
