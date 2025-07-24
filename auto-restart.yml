@@ -1,0 +1,21 @@
+# .github/workflows/auto-restart.yml
+name: Auto Restart VPS
+
+on:
+  workflow_run:
+    workflows: ["Playit VPS"]
+    types:
+      - completed
+
+jobs:
+  retrigger:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger again
+        run: |
+          curl -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            https://api.github.com/repos/${{ github.repository }}/dispatches \
+            -d '{"event_type":"create-vps"}'
